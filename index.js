@@ -64,61 +64,52 @@ const getLocation = async (url, redirectedPage) => {
 }
 
 const start = async () => {
-    try {
-        const [browser, page] = await createBrowser(); // Создали браузер (вкладку)
-        const searchingCnt = await loadPage(`${baseURL}/results?search_query=warzone+hack`, page); // Страница результатов
-
-        let $ = cheerio.load(searchingCnt); // Загрузили в парсер нашу страницу с результатами
-        const videoItems = $("a#thumbnail.yt-simple-endpoint.inline-block.style-scope.ytd-thumbnail");
-
-        for (let i = 1; i < 3; i++) {
-            //console.log(videoItems[i].attribs.href);
-            foundVideoURL.push(`https://www.youtube.com${videoItems[i].attribs.href}`); // Найденные видео по поиску            
-        }
-        console.log(foundVideoURL);
-
-        // Начинаем парсить найденные видосы
-        browser.close(); // Закрываем браузер со страницей поиска (вкладку)
-        foundVideoURL.forEach(async (url) => {
+    await (async () => {
+        try {
             const [browser, page] = await createBrowser(); // Создали браузер (вкладку)
-            const trafferVideo = await loadPage(url, page); // Заходим на видос трафера
-            //console.log("trafferVideo", trafferVideo)
-            $ = cheerio.load(trafferVideo); // Загружаем в парсер наш html
-            const descriptionCtn = $("#content .yt-simple-endpoint.style-scope.yt-formatted-string"); // Получаем ссылки в описании
-            for (let n = 0; n < descriptionCtn.length; ++n) { // Пробегаемся по всем ссылкам
-                if (descriptionCtn[n]) {
-                    //console.log(descriptionCtn[n].attribs.href)
-                    config.keyWord.forEach(word => { // Если в ссылке есть сигнатура, добавляем в массив
-                        if (descriptionCtn[n].attribs.href.includes(word)) {
-                            resultLinks.push(descriptionCtn[n].attribs.href);
-                        }
+            const searchingCnt = await loadPage(`${baseURL}/results?search_query=warzone+hack`, page); // Страница результатов
 
-                        resultLinks = [...new Set(resultLinks)]; // Избавляемся от дубликатов
-                        console.log(resultLinks);
-                    })
+            let $ = await cheerio.load(searchingCnt); // Загрузили в парсер нашу страницу с результатами
+            const videoItems = $("a#thumbnail.yt-simple-endpoint.inline-block.style-scope.ytd-thumbnail");
 
-
-                } else break
+            for (let i = 1; i < 3; i++) { // Заглушка, чтобы только 2 видоса парсились
+                //console.log(videoItems[i].attribs.href);
+                foundVideoURL.push(`https://www.youtube.com${videoItems[i].attribs.href}`); // Найденные видео по поиску            
             }
+            console.log(foundVideoURL);
 
-            browser.close();
+            // Начинаем парсить найденные видосы
+            await browser.close(); // Закрываем браузер со страницей поиска (вкладку)
 
-            const [redirectedBrowser, redirectedPage] = await createBrowser()
+            await Promise.all(foundVideoURL.map(async (url) => {
+                return new Promise(async (res, rej) => {
+                    const [browser, page] = await createBrowser(); // Создали браузер (вкладку)
+                    const trafferVideo = await loadPage(url, page); // Заходим на видос трафера
+                    //console.log("trafferVideo", trafferVideo)
+                    $ = await cheerio.load(trafferVideo); // Загружаем в парсер наш html
+                    const descriptionCtn = $("#content .yt-simple-endpoint.style-scope.yt-formatted-string"); // Получаем ссылки в описании
+                    for (let n = 0; n < descriptionCtn.length; ++n) { // Пробегаемся по всем ссылкам
+                        if (descriptionCtn[n]) {
+                            //console.log(descriptionCtn[n].attribs.href)
+                            config.keyWord.forEach(word => { // Если в ссылке есть сигнатура, добавляем в массив
+                                if (descriptionCtn[n].attribs.href.includes(word)) {
+                                    resultLinks.push(descriptionCtn[n].attribs.href);
+                                }
 
-            await getLocation("https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbVFnM21SLW56M3hic1V6U2JhODdBVHZGX2ZWZ3xBQ3Jtc0tudjd0Nk1KMXQ0R0VzWk1FVGJOMHFQcnRRTUk1Vkp1VDdNeGtNcnhXUmhWUnBKYXBJRGdSQW5ZR2lzZ2F1Z21IOTlkbjJRdVg4MWZudW1Hd1lkOEs2TjZmYUFJeXlyX3I0ekgycEVpd1QwaHhUME41OA&q=http%3A%2F%2Fgg.gg%2F12b5fu&v=lFJqlqqoH6g", redirectedPage)
-
-            redirectedBrowser.close()
-
-
-            /*          const [redirectedBrowser, redirectedPage] = await createBrowser();
-                        await getLocation("https://www.youtube.com/redirect?event=video_description&redir_token=QUFFLUhqbVFnM21SLW56M3hic1V6U2JhODdBVHZGX2ZWZ3xBQ3Jtc0tudjd0Nk1KMXQ0R0VzWk1FVGJOMHFQcnRRTUk1Vkp1VDdNeGtNcnhXUmhWUnBKYXBJRGdSQW5ZR2lzZ2F1Z21IOTlkbjJRdVg4MWZudW1Hd1lkOEs2TjZmYUFJeXlyX3I0ekgycEVpd1QwaHhUME41OA&q=http%3A%2F%2Fgg.gg%2F12b5fu&v=lFJqlqqoH6g",redirectedPage)
-            
-                        redirectedBrowser.close() */
-
-        })
-    } catch (e) {
-        console.log(e)
-    }
+                                resultLinks = [...new Set(resultLinks)]; // Избавляемся от дубликатов
+                                console.log(resultLinks);
+                            })
+                        } else break
+                    }
+                    await browser.close();
+                    res()
+                })
+            }))
+            console.log(123)
+        } catch (e) {
+            console.log(e)
+        }
+    })()
 }
 
 start()
